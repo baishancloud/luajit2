@@ -139,8 +139,15 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   if (lenx >= LJ_MAX_STR)
     lj_err_msg(L, LJ_ERR_STROV);
   g = G(L);
-  /* Compute string hash. Constants taken from lookup3 hash by Bob Jenkins. */
-  if (len >= 4) {  /* Caveat: unaligned access! */
+
+  if (len >= 12) {
+    a = lj_getu32(str);
+    b = lj_getu32(str+(len>>1)-2);
+    unsigned int step = (len>>5)+1;  /* if string is too long, don't hash all its chars */
+    unsigned int  l1;
+    for (l1=len; l1>=step; l1-=step)  /* compute hash */
+      h = h ^ ((h<<5)+(h>>2) + *(unsigned char*)(str + l1-1));
+  } else if (len >= 4) {  /* Caveat: unaligned access! */
     a = lj_getu32(str);
     h ^= lj_getu32(str+len-4);
     b = lj_getu32(str+(len>>1)-2);
